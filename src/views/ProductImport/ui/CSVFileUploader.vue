@@ -49,9 +49,19 @@ import Vue from 'vue';
 
 import axios from 'axios';
 
+type ImportPresignedUrlHeaders = {
+	Authorization?: string;
+};
 const fetchPresignedS3Url = (url: string, fileName: string) => {
+	const headers: ImportPresignedUrlHeaders = {};
+	const authorizationToken = localStorage.getItem('authorization_token');
+	if (authorizationToken) {
+		headers.Authorization = `Basic ${authorizationToken}`;
+	}
+
 	return axios({
 		method: 'GET',
+		headers,
 		url,
 		params: {
 			name: encodeURIComponent(fileName),
@@ -116,9 +126,13 @@ export default Vue.extend({
 			try {
 				await uploadFileBy(this.url, this.file as File);
 			} catch (e) {
-				const msg = this.$t('errorMessage.cantUploadFile', {
-					reason: e.message,
-				});
+				const status = e.response?.status;
+				const msg =
+					status === 401 || status === 403
+						? e.message
+						: this.$t('errorMessage.cantUploadFile', {
+								reason: e.message,
+						  });
 
 				this.showSnackbarMessage(msg.toString());
 			} finally {
